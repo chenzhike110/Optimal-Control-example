@@ -34,7 +34,7 @@ class CartPoleEnv():
         self.masscart = 1.0
         self.masspole = 0.1
         self.total_mass = self.masspole + self.masscart
-        self.length = 0.5  # actually half the pole's length
+        self.length = 1.0 
         self.polemass_length = self.masspole * self.length
         self.force_max = 10.0
         self.tau = 0.02  # seconds between state updates
@@ -54,13 +54,12 @@ class CartPoleEnv():
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
-
-    def step(self, action):
-
-        x, x_dot, theta, theta_dot = self.state
+    
+    def model(self, state, action):
+        x, x_dot, theta, theta_dot = state
         force = action
-        costheta = math.cos(theta)
-        sintheta = math.sin(theta)
+        costheta = np.cos(theta)
+        sintheta = np.sin(theta)
 
         temp = (
             force + self.polemass_length * theta_dot ** 2 * sintheta
@@ -81,9 +80,23 @@ class CartPoleEnv():
             theta_dot = theta_dot + self.tau * thetaacc
             theta = theta + self.tau * theta_dot
 
-        self.state = (x, x_dot, theta, theta_dot)
-
+        return np.array([x, x_dot, theta, theta_dot],dtype=np.float64)
+    
+    def step(self, action):
+        self.state = self.model(self.state, action)
         return np.array(self.state, dtype=np.float32)
+    
+    def state_space(self):
+        A = np.zeros((4,4))
+        A[0,1] = 1
+        A[1,2] = -self.masspole*self.gravity / (2*self.masscart + self.masspole)
+        A[2,3] = 1
+        A[3,2] = (self.masspole+self.masscart)*self.gravity / ((2*self.masscart + self.masspole)*self.length)
+
+        B = np.zeros((4,1))
+        B[1] = 2.0 / (2*self.masscart+self.masspole)
+        B[3] = -1.0 / ((2*self.masscart+self.masspole)*self.length)
+        return A, B
 
     def reset(self):
         self.state = self.np_random.uniform(low=-0.05, high=0.05, size=(4,))
@@ -98,7 +111,7 @@ class CartPoleEnv():
         scale = screen_width / world_width
         carty = 100  # TOP OF CART
         polewidth = 10.0
-        polelen = scale * (2 * self.length)
+        polelen = scale * self.length
         cartwidth = 50.0
         cartheight = 30.0
 
