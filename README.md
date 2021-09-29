@@ -21,3 +21,4 @@ build several model based on gym
 
 ![LQR](./images/LQR.jpg)
 
+2D Linear Pendulum Walking
